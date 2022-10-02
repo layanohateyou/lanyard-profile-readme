@@ -43,8 +43,6 @@ const elapsedTime = (timestamp: any) => {
 };
 
 const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<string> => {
-    let { data } = body;
-
     let avatarBorderColor: string = "#747F8D",
         userStatus: string = "",
         avatarExtension: string = "webp",
@@ -59,8 +57,8 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
         borderRadius = "10px",
         idleMessage = "I'm not currently doing anything!";
 
-    if (data.activities[0]?.emoji?.animated) statusExtension = "gif";
-    if (data.discord_user.avatar && data.discord_user.avatar.startsWith("a_")) avatarExtension = "gif";
+    if (body.data.activities[0]?.emoji?.animated) statusExtension = "gif";
+    if (body.data.discord_user.avatar && body.data.discord_user.avatar.startsWith("a_")) avatarExtension = "gif";
     if (params.animated === "false") avatarExtension = "webp";
     if (params.hideStatus === "true") hideStatus = "true";
     if (params.hideTimestamp === "true") hideTimestamp = "true";
@@ -75,14 +73,14 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
     if (params.borderRadius) borderRadius = params.borderRadius;
 
     let avatar: String;
-    if (data.discord_user.avatar) {
+    if (body.data.discord_user.avatar) {
         avatar = await encodeBase64(
-            `https://cdn.discordapp.com/avatars/${data.discord_user.id}/${
-                data.discord_user.avatar
-            }.${avatarExtension}?size=${avatarExtension === "gif" ? "64" : "256"}`
+            `https://cdn.discordapp.com/avatars/${body.data.discord_user.id}/${
+                body.data.discord_user.avatar
+            }.${avatarExtension}?size=${avatarExtension === "gif" ? "128" : "256"}`
         );
     } else {
-        let lastDigit = Number(data.discord_user.discriminator.substr(-1));
+        let lastDigit = Number(body.data.discord_user.discriminator.substr(-1));
         if (lastDigit >= 5) {
             lastDigit -= 5;
         }
@@ -105,7 +103,7 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
         }
     }
 
-    switch (data.discord_status) {
+    switch (body.data.discord_status) {
         case "online":
             avatarBorderColor = "#43B581";
             break;
@@ -120,25 +118,28 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
             break;
     }
 
-    let flags: string[] = getFlags(data.discord_user.public_flags);
-    if (data.discord_user.avatar && data.discord_user.avatar.includes("a_")) flags.push("Nitro");
+    const flags: string[] = getFlags(body.data.discord_user.public_flags);
 
-    if (data.activities[0] && data.activities[0].state && data.activities[0].type === 4)
-        userStatus = data.activities[0].state;
+    if (body.data.activities[0] && body.data.activities[0].state && body.data.activities[0].type === 4)
+        userStatus = body.data.activities[0].state;
+
+    if (body.data.activities[0] && body.data.activities[0].state && body.data.activities[0].type === 4)
+        userStatus = body.data.activities[0].state;
 
     // filter only type 0
-    const activities = data.activities.filter(activity => activity.type === 0);
+    const activities = body.data.activities.filter(activity => activity.type === 0);
 
     // take the highest one
     activity = Array.isArray(activities) ? activities[0] : activities;
 
     return `
-            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml" width="410px" height="210px">
-                <foreignObject x="0" y="0" width="410" height="210">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xhtml="http://www.w3.org/1999/xhtml" width="310px" height="244px">
+                <foreignObject x="0" y="0" width="100%" height="100%">
                     <div xmlns="http://www.w3.org/1999/xhtml" style="
                         position: absolute;
-                        width: 400px;
-                        height: 200px;
+                        width: calc(100% - 16px);
+                        height: calc(100% - 16px);
+                        margin: 8px;
                         inset: 0;
                         background-color: #${backgroundColor};
                         color: ${theme === "dark" ? "#fff" : "#000"};
@@ -146,19 +147,15 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                         font-size: 16px;
                         display: flex;
                         flex-direction: column;
-                        padding: 5px;
                         border-radius: ${borderRadius};
                     ">
                         <div style="
-                            width: 400px;
+                            width: 100%;
                             height: 100px;
                             inset: 0;
                             display: flex;
                             flex-direction: row;
                             padding-bottom: 5px;
-                            border-bottom: solid 0.5px ${
-                                theme === "dark" ? "hsl(0, 0%, 100%, 10%)" : "hsl(0, 0%, 0%, 10%)"
-                            };
                         ">
                             <div style="
                                 display: flex;
@@ -168,8 +165,7 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                             ">
                                 <img src="data:image/png;base64,${avatar}"
                                 style="
-                                    border: solid 3px ${avatarBorderColor};
-                                    border-radius: 50%;
+                                    border-radius: 8px;
                                     width: 50px;
                                     height: 50px;
                                     position: relative;
@@ -177,6 +173,13 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                                     left: 50%;
                                     transform: translate(-50%, -50%);
                                 "/>
+                                <svg xmlns="http://www.w3.org/2000/svg" 
+                                style="
+                                    overflow: visible;
+                                    z-index: 1;
+                                ">
+                                    <rect fill="${avatarBorderColor}" x="3" y="53" width="16" height="16" rx="4" ry="4" stroke="#${backgroundColor}" style="stroke-width: 3px;"/>
+                                </svg>
                             </div>
                             <div style="
                                 height: 80px;
@@ -184,39 +187,46 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                             ">
                                 <div style="
                                     display: flex;
-                                    flex-direction: row;
+                                    flex-direction: column;
                                     position: relative;
                                     top: ${userStatus.length > 0 && hideStatus !== "true" ? "35%" : "50%"};
-                                    transform: translate(0, -50%);
-                                    height: 25px;
+                                    transform: translate(0, -80%);
+                                    height: 35px;
                                 ">
                                     <h1 style="
                                         font-size: 1.15rem;
                                         margin: 0 5px 0 0;
                                     ">
-                                    ${escape(data.discord_user.username)}${
-                                        discrim !== "hide"
-                                            ? `<span style="color: ${theme === "dark" ? "#ccc" : "#666"}; font-weight: lighter;">#${
-                                                data.discord_user.discriminator
-                                            }</span>`
-                                            : ""
-                                    }
+                                    ${escape(body.data.discord_user.username)}${
+        discrim !== "hide"
+            ? `<span style="color: ${theme === "dark" ? "#ccc" : "#666"}; font-weight: lighter;">#${
+                  body.data.discord_user.discriminator
+              }</span>`
+            : ""
+    }
                                     </h1>
 
                                     ${
-                                        hideBadges == "true" ? "" : flags.map(v => `
+                                        hideBadges == "true"
+                                            ? ""
+                                            : flags
+                                                  .map(
+                                                      v => `
                                         <img src="data:image/png;base64,${Badges[v]}" style="
-                                            width: auto;
+                                            width: 20px;
                                             height: 20px;
                                             position: relative;
                                             top: 50%;
                                             transform: translate(0%, -50%);
                                             margin: 0 0 0 4px;
-                                        " />`).join("")
+                                        " />`
+                                                  )
+                                                  .join("")
                                     }
                                 </div>
                                 ${
-                                    userStatus.length > 0 && hideStatus !== "true" ? `
+                                    userStatus.length > 0 && hideStatus !== "true"
+                                        ? `
                                     <h1 style="
                                         font-size: 0.9rem;
                                         margin-top: 16px;
@@ -227,9 +237,10 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                                         text-overflow: ellipsis;
                                     ">
                                     ${
-                                        data.activities[0].emoji && data.activities[0].emoji.id ? `
+                                        body.data.activities[0].emoji && body.data.activities[0].emoji.id
+                                            ? `
                                         <img src="data:image/png;base64,${await encodeBase64(
-                                            `https://cdn.discordapp.com/emojis/${data.activities[0].emoji.id}.${statusExtension}`
+                                            `https://cdn.discordapp.com/emojis/${body.data.activities[0].emoji.id}.${statusExtension}`
                                         )}"
                                         style="
                                             width: 15px;
@@ -238,47 +249,55 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                                             top: 10px;
                                             transform: translate(0%, -50%);
                                             margin: 0 2px 0 0;
-                                        " />` : ``
+                                        " />`
+                                            : ``
                                     }
                                     ${
-                                        data.activities[0].emoji && !data.activities[0].emoji.id
-                                            ? data.activities[0].emoji.name + " " + escape(userStatus)
+                                        body.data.activities[0].emoji && !body.data.activities[0].emoji.id
+                                            ? body.data.activities[0].emoji.name + " " + escape(userStatus)
                                             : escape(userStatus)
                                     }
-                                </h1>` : ``
+                                </h1>`
+                                        : ``
                                 }
                             </div>
                         </div>
 
                         ${
-                            activity ? `
+                            activity
+                                ? `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="310" height="21" viewBox="0 0 310 21" fill="none" style="
+                                    overflow: visible;
+                                ">
+                                <path d="M0 21V7.19143C0 7.19143 38.8172 -2.31216 87.1664 0.530784C138.272 1.7492 156.532 13.564 222.108 14.5019C266.093 14.5019 294 7.35388 294 7.35388V21H0Z" fill="#7289DA"/>
+                            </svg>
                             <div style="
                                 display: flex;
                                 flex-direction: row;
-                                height: 120px;
-                                margin-left: 15px;
                                 font-size: 0.75rem;
-                                padding-top: 18px;
+                                padding: 15px 0;
+                                background-color: #7289da;
+                                border-radius: 0 0 8px 8px;
                             ">
                                 <div style="
-                                    margin-right: 15px;
+                                    position: relative;
+                                    margin: 0 15px;
                                     width: auto;
                                     height: auto;
                                 ">
-                                    ${
-                                        activity.assets && activity.assets.large_image ? `
-                                        <img src="data:image/png;base64,${await encodeBase64(
-                                        activity.assets.large_image.startsWith("mp:external/")
-                                            ? `https://media.discordapp.net/external/${activity.assets.large_image.replace("mp:external/", "")}` 
-                                            : `https://cdn.discordapp.com/app-assets/${activity.application_id}/${activity.assets.large_image}.webp`
+                                ${
+                                    activity.assets && activity.assets.large_image
+                                        ? `
+                                    <img src="data:image/png;base64,${await encodeBase64(
+                                        `https://cdn.discordapp.com/app-assets/${activity.application_id}/${activity.assets.large_image}.webp`
                                     )}"
-                                        style="
-                                            width: 80px;
-                                            height: 80px;
-                                            border: solid 0.5px #222;
-                                            border-radius: 10px;
-                                        "/>
-                                    ` : `
+                                    style="
+                                        width: 80px;
+                                        height: 80px;
+                                        border-radius: 10px;
+                                    "/>
+                                    `
+                                        : `
                                     <img src="data:image/png;base64,${await encodeBase64(
                                         `https://lanyard-profile-readme.vercel.app/assets/unknown.png`
                                     )}" style="
@@ -287,21 +306,21 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                                         margin-top: 4px;
                                         filter: invert(100);
                                     "/>
-                                `}
+                                `
+                                }
                                 ${
-                                    activity.assets && activity.assets.small_image ? `
+                                    activity.assets && activity.assets.small_image
+                                        ? `
                                     <img src="data:image/png;base64,${await encodeBase64(
-                                        activity.assets.small_image.startsWith("mp:external/")
-                                            ? `https://media.discordapp.net/external/${activity.assets.small_image.replace("mp:external/", "")}`
-                                            : `https://cdn.discordapp.com/app-assets/${activity.application_id}/${activity.assets.small_image}.webp`
+                                        `https://cdn.discordapp.com/app-assets/${activity.application_id}/${activity.assets.small_image}.webp`
                                     )}"
                                     style="
-                                        width: 30px;
-                                        height: 30px;
+                                        position: absolute;
+                                        bottom: 0; right: -7.5px;
+                                        width: 30px; height: 30px;
                                         border-radius: 50%;
-                                        margin-left: -26px;
-                                        margin-bottom: -8px;
-                                    "/>` : ``
+                                    "/>`
+                                        : ``
                                 }
                                 </div>
                                 <div style="
@@ -323,76 +342,86 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                                         text-overflow: ellipsis;
                                         height: 15px;
                                         margin: 7px 0;
-                                    ">${escape(activity.name)}</p>
-                                        ${
-                                            activity.details
-                                                ? `
-                                            <p style="
-                                                color: ${theme === "dark" ? "#ccc" : "#777"};
-                                                overflow: hidden;
-                                                white-space: nowrap;
-                                                font-size: 0.85rem;
-                                                text-overflow: ellipsis;
-                                                height: 15px;
-                                                margin: 7px 0;
-                                            ">${escape(activity.details)}</p>`
-                                                : ``
-                                        }
-                                        ${
-                                            activity.state
-                                                ? `
-                                            <p style="
-                                                color: ${theme === "dark" ? "#ccc" : "#777"};
-                                                overflow: hidden;
-                                                white-space: nowrap;
-                                                font-size: 0.85rem;
-                                                text-overflow: ellipsis;
-                                                height: 15px;
-                                                margin: 7px 0;
-                                            ">${escape(activity.state)}${
-                                                    activity.party && activity.party.size
-                                                        ? ` (${activity.party.size[0]} of ${activity.party.size[1]})`
-                                                        : ""
-                                                }</p>` : ``
-                                        }
-                                        ${
-                                            activity.timestamps && activity.timestamps.start && hideTimestamp !== "true" ? `
-                                            <p style="
-                                                color: ${theme === "dark" ? "#ccc" : "#777"};
-                                                overflow: hidden;
-                                                white-space: nowrap;
-                                                font-size: 0.85rem;
-                                                text-overflow: ellipsis;
-                                                height: 15px;
-                                                margin: 7px 0;
-                                            ">${elapsedTime(new Date(activity.timestamps.start).getTime())} elapsed</p>`
-                                                : ``
-                                        }
+                                    ">${activity.name}</p>
+                                    ${
+                                        activity.details
+                                            ? `
+                                        <p style="
+                                            color: ${theme === "dark" ? "#ccc" : "#777"};
+                                            overflow: hidden;
+                                            white-space: nowrap;
+                                            font-size: 0.85rem;
+                                            text-overflow: ellipsis;
+                                            max-width: 141px; height: 15px;
+                                            margin: 7px 0;
+                                        ">${activity.details}</p>`
+                                            : ``
+                                    }
+                                    ${
+                                        activity.state
+                                            ? `
+                                        <p style="
+                                            color: ${theme === "dark" ? "#ccc" : "#777"};
+                                            overflow: hidden;
+                                            white-space: nowrap;
+                                            font-size: 0.85rem;
+                                            text-overflow: ellipsis;
+                                            max-width: 141px; height: 15px;
+                                            margin: 7px 0;
+                                        ">${activity.state}${
+                                                  activity.party && activity.party.size
+                                                      ? ` (${activity.party.size[0]} of ${activity.party.size[1]})`
+                                                      : ""
+                                              }</p>`
+                                            : ``
+                                    }
+                                    ${
+                                        activity.timestamps && activity.timestamps.start && hideTimestamp !== "true"
+                                            ? `
+                                        <p style="
+                                            color: ${theme === "dark" ? "#ccc" : "#777"};
+                                            overflow: hidden;
+                                            white-space: nowrap;
+                                            font-size: 0.85rem;
+                                            text-overflow: ellipsis;
+                                            height: 15px;
+                                            margin: 7px 0;
+                                        ">${elapsedTime(new Date(activity.timestamps.start).getTime())} elapsed</p>`
+                                            : ``
+                                    }
                                 </div>
                             </div>
-                            ` : ``
+                            `
+                                : ``
                         }
 
             ${
-                data.listening_to_spotify === true && !activity && data.activities[Object.keys(data.activities).length - 1].type === 2
+                body.data.listening_to_spotify === true &&
+                !activity &&
+                body.data.activities[Object.keys(body.data.activities).length - 1].type === 2
                     ? `
-                <div style="
-                    display: flex;
-                    flex-direction: row;
-                    height: 120px;
-                    margin-left: 15px;
-                    font-size: 0.8rem;
-                    padding-top: 18px;
-                ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="310" height="21" viewBox="0 0 310 21" fill="none" style="
+                        overflow: visible;
+                    ">
+                    <path d="M0 21V7.19143C0 7.19143 38.8172 -2.31216 87.1664 0.530784C138.272 1.7492 156.532 13.564 222.108 14.5019C266.093 14.5019 294 7.35388 294 7.35388V21H0Z" fill="#1DB954"/>
+                </svg>
+                    <div style="
+                        display: flex;
+                        flex-direction: row;
+                        font-size: 0.75rem;
+                        padding: 15px 0;
+                        background-color: #1DB954;
+                        border-radius: 0 0 8px 8px;
+                    ">
                     <img src="${await (async () => {
-                        const album = await encodeBase64(data.spotify.album_art_url);
-                        if (album) return `data:image/png;base64,${album}" style="border: solid 0.5px #222;`;
+                        const album = await encodeBase64(body.data.spotify.album_art_url);
+                        if (album) return `data:image/png;base64,${album}" style="border: solid 0 transparent;`;
                         return 'https://lanyard-profile-readme.vercel.app/assets/unknown.png" style="filter: invert(100);';
                     })()}
                         width: 80px;
                         height: 80px;
                         border-radius: 10px;
-                        margin-right: 15px;
+                        margin: 0 15px;
                     "/>
 
                     <div style="
@@ -402,10 +431,10 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                         width: 279px;
                     ">
                         <p style="font-size: 0.75rem; font-weight: bold; color: ${
-                            theme === "dark" ? "#1CB853" : "#0d943d"
+                            theme === "dark" ? "#fff" : "#0d943d"
                         }; margin-bottom: 15px;">LISTENING TO SPOTIFY...</p>
                         <p style="
-                            height: 15px;
+                            max-width: 141px; height: 15px;
                             color: ${theme === "dark" ? "#fff" : "#000"};
                             font-weight: bold;
                             font-size: 0.85rem;
@@ -413,7 +442,7 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                             white-space: nowrap;
                             text-overflow: ellipsis;
                             margin: 7px 0;
-                        ">${escape(data.spotify.song)}</p>
+                        ">${escape(body.data.spotify.song)}</p>
                         <p style="
                             margin: 7px 0;
                             height: 15px;
@@ -422,13 +451,14 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                             font-size: 0.85rem;
                             text-overflow: ellipsis;
                             color: ${theme === "dark" ? "#ccc" : "#777"};
-                        ">By ${escape(data.spotify.artist)}</p>
+                        ">By ${escape(body.data.spotify.artist)}</p>
                     </div>
                 </div>
-            ` : ``
+            `
+                    : ``
             }
             ${
-                !activity && data.listening_to_spotify === false
+                !activity && body.data.listening_to_spotify === false
                     ? `<div style="
                     display: flex;
                     flex-direction: row;
@@ -445,7 +475,8 @@ const renderCard = async (body: LanyardTypes.Root, params: Parameters): Promise<
                     ">
                         ${escape(idleMessage)}
                     </p>
-                </div>` : ``
+                </div>`
+                    : ``
             }
 
                     </div>
